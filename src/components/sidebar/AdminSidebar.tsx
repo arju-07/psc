@@ -34,7 +34,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ onItemClick }) => {
 
   const adminNavItems = [
     { label: 'Overview', path: '/admin', icon: LayoutDashboard, exact: true },
-    { label: 'PDF Pipeline', path: '/admin/pipeline', icon: Zap, badge: '11-Step' },
+    { label: 'PDF Pipeline', path: '/admin/pipeline', icon: Zap, badge: 'Fast OCR' },
     { label: 'Exam Categories', path: '/admin/categories', icon: Layers },
     { label: 'Examinations', path: '/admin/exams', icon: GraduationCap },
     { label: 'Subjects & Topics', path: '/admin/subjects', icon: ListTree },

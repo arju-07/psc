@@ -76,7 +76,7 @@ export const AdminPipelinePage: React.FC = () => {
             Automatic PDF Processing Pipeline
           </h1>
           <p className="text-xs text-slate-400 max-w-2xl">
-            11-Step automated pipeline for large PDF compendiums, OCR for scanned booklets, official key correlation, and human-in-the-loop question verification.
+            4-Step streamlined pipeline for fast PDF ingestion, bilingual OCR, official key correlation, and direct verification.
           </p>
         </div>
 

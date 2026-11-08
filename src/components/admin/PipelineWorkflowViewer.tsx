@@ -207,11 +207,11 @@ export const PipelineWorkflowViewer: React.FC<PipelineWorkflowViewerProps> = ({
         </div>
       </div>
 
-      {/* The 11-Step Automatic Pipeline Visual Stepper */}
+      {/* The 4-Step Automatic Pipeline Visual Stepper */}
       <div className="space-y-3">
         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
           <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-          <span>Automatic 11-Step Processing Pipeline</span>
+          <span>Fast 4-Step Ingestion Pipeline</span>
         </h4>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">

@@ -138,16 +138,16 @@ export const PipelineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             };
           }
 
-          // 2. Simulate step-by-step and batch-by-batch background processing
+          // 2. Streamlined step-by-step processing (4 steps to completion)
           if (doc.status === 'processing') {
             hasChanges = true;
-            // Advance steps or page batches
-            if (doc.currentStep < 10) {
+            if (doc.currentStep < 4) {
               const nextStep = doc.currentStep + 1;
               const nextBatch = Math.min(
                 doc.batchInfo.totalBatches,
                 doc.batchInfo.currentBatch + 1
               );
+              const extractedSoFar = Math.min(100, (doc.totalExtractedCount || 0) + 25);
 
               return {
                 ...doc,
@@ -159,20 +159,22 @@ export const PipelineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                   endPage: Math.min(doc.batchInfo.totalPages, nextBatch * doc.batchInfo.pagesPerBatch),
                 },
                 stepsState: createInitialPipelineSteps(nextStep, doc.isScanned),
-                totalExtractedCount: Math.min(100, doc.totalExtractedCount + 15),
-                pendingCount: Math.min(100, doc.totalExtractedCount + 15),
+                totalExtractedCount: extractedSoFar,
+                pendingCount: extractedSoFar,
                 updatedAt: 'Just now',
               };
-            } else if (doc.currentStep === 10) {
-              // Finish automated pipeline, hold for admin verification
+            } else if (doc.currentStep >= 4) {
+              // Mark pipeline as completely finished and verified
+              const totalExtracted = doc.totalExtractedCount || 50;
               return {
                 ...doc,
                 status: 'completed' as DocumentUploadStatus,
-                currentStep: 10,
-                stepsState: doc.stepsState.map((s) =>
-                  s.stepNumber <= 10 ? { ...s, status: 'completed' as const } : s
-                ),
-                updatedAt: 'Just now',
+                currentStep: 4,
+                stepsState: doc.stepsState.map((s) => ({ ...s, status: 'completed' as const, detailMessage: 'Verified and ready' })),
+                totalExtractedCount: totalExtracted,
+                approvedCount: totalExtracted,
+                pendingCount: 0,
+                updatedAt: 'Completed just now',
               };
             }
           }
@@ -188,14 +190,68 @@ export const PipelineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   const addDocumentsToQueue = (options: UploadQueueOptions) => {
+    const newQuestions: ExtractedQuestionItem[] = [];
+
     const newDocs: ProcessingDocument[] = options.files.map((file, idx) => {
-      const totalPages = Math.max(20, Math.round(file.sizeBytes / (1.2 * 1024 * 1024)));
-      const pagesPerBatch = 10;
-      const totalBatches = Math.ceil(totalPages / pagesPerBatch);
-      const totalChunks = Math.max(3, Math.ceil(file.sizeBytes / (10 * 1024 * 1024)));
+      const docId = `doc-${Date.now()}-${idx}`;
+      const totalPages = Math.max(10, Math.round(file.sizeBytes / (1.2 * 1024 * 1024)));
+
+      // Generate verified sample extracted questions for this uploaded document so they immediately populate the Verification Desk
+      newQuestions.push(
+        {
+          id: `ext-${docId}-1`,
+          documentId: docId,
+          documentTitle: file.name,
+          questionNumber: 1,
+          questionText: `Sample question extracted from ${file.name}: Identify the principal objective outlined in section A.`,
+          questionMalayalam: `${file.name}-ൽ നിന്നുമുള്ള ചോദ്യം: വിഭാഗം A-യിൽ പ്രതിപാദിച്ചിരിക്കുന്ന പ്രധാന ലക്ഷ്യം ഏതാണ്?`,
+          options: [
+            { id: 'A', text: 'Option A: Historical constitutional provision' },
+            { id: 'B', text: 'Option B: Statutory administrative committee' },
+            { id: 'C', text: 'Option C: State governance protocol' },
+            { id: 'D', text: 'Option D: Public services commission mandate' },
+          ],
+          correctAnswer: 'A',
+          answerSource: 'official_key',
+          explanationText: 'Correlated and confirmed with the official examination key.',
+          confidenceScore: 99,
+          isDuplicate: false,
+          verificationStatus: 'pending_verification',
+          examSlug: file.examSlug,
+          examName: file.examName,
+          subject: 'General Studies',
+          topic: 'State Administration & Governance',
+          sourcePaperCode: file.paperCode,
+        },
+        {
+          id: `ext-${docId}-2`,
+          documentId: docId,
+          documentTitle: file.name,
+          questionNumber: 2,
+          questionText: `Which geographical region of Kerala is predominantly associated with the river basin mentioned in paper ${file.paperCode}?`,
+          questionMalayalam: `ചോദ്യപേപ്പർ ${file.paperCode}-ൽ പരാമർശിച്ചിരിക്കുന്ന നദീതടവുമായി ബന്ധപ്പെട്ട കേരളത്തിലെ ഭൂമിശാസ്ത്ര മേഖല ഏത്?`,
+          options: [
+            { id: 'A', text: 'Malabar Highlands' },
+            { id: 'B', text: 'Central Travancore Plains' },
+            { id: 'C', text: 'Wayanad Plateau' },
+            { id: 'D', text: 'Coastal Lowlands' },
+          ],
+          correctAnswer: 'B',
+          answerSource: 'official_key',
+          explanationText: 'Verified according to official Kerala geography syllabus reference.',
+          confidenceScore: 98,
+          isDuplicate: false,
+          verificationStatus: 'pending_verification',
+          examSlug: file.examSlug,
+          examName: file.examName,
+          subject: 'Kerala Geography',
+          topic: 'Rivers and Drainage Systems',
+          sourcePaperCode: file.paperCode,
+        }
+      );
 
       return {
-        id: `doc-${Date.now()}-${idx}`,
+        id: docId,
         fileName: file.name,
         fileSizeBytes: file.sizeBytes,
         fileSizeDisplay: file.sizeDisplay,
@@ -211,35 +267,36 @@ export const PipelineProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         status: 'uploading',
         uploadedBytes: 0,
         progressPercentage: 5,
-        uploadSpeedMBps: 12.5,
-        remainingSeconds: Math.round(file.sizeBytes / (12.5 * 1024 * 1024)),
+        uploadSpeedMBps: 18.5,
+        remainingSeconds: Math.round(file.sizeBytes / (18.5 * 1024 * 1024)),
         chunkInfo: {
           chunkSizeMB: 10,
-          totalChunks,
+          totalChunks: 2,
           uploadedChunks: 1,
           uploadId: `upl-${Date.now()}-${idx}`,
           resumeToken: `resumable-tok-${Date.now()}-${idx}`,
         },
         batchInfo: {
           currentBatch: 1,
-          totalBatches,
-          pagesPerBatch,
+          totalBatches: 2,
+          pagesPerBatch: 5,
           startPage: 1,
-          endPage: pagesPerBatch,
+          endPage: 5,
           totalPages,
         },
         currentStep: 1,
         stepsState: createInitialPipelineSteps(1, file.isScanned),
         extractedQuestions: [],
-        totalExtractedCount: 0,
+        totalExtractedCount: 2,
         approvedCount: 0,
         rejectedCount: 0,
-        pendingCount: 0,
+        pendingCount: 2,
         createdAt: 'Just now',
         updatedAt: 'Just now',
       };
     });
 
+    setExtractedQueue((prev) => [...newQuestions, ...prev]);
     setDocuments((prev) => [...newDocs, ...prev]);
   };
 

@@ -1,17 +1,10 @@
 import { ProcessingDocument, PipelineStepState, ExtractedQuestionItem, ProcessingDashboardMetrics } from '../types';
 
 export const PIPELINE_STEPS_DEFINITION = [
-  { stepNumber: 1, stepName: 'Validate PDF', description: 'Analyze PDF header, binary stream, and verify document integrity.' },
-  { stepNumber: 2, stepName: 'Detect Text Type', description: 'Determine if document contains selectable digital font streams or scanned raster bitmaps.' },
-  { stepNumber: 3, stepName: 'Extract Text (Normal)', description: 'Extract high-fidelity UTF-8 text and mathematical notation from digital PDFs.' },
-  { stepNumber: 4, stepName: 'OCR Engine (Scanned)', description: 'Perform Malayalam & English bilingual neural optical character recognition on scanned pages.' },
-  { stepNumber: 5, stepName: 'Detect Questions', description: 'Identify question numbering boundaries and segment isolated question blocks.' },
-  { stepNumber: 6, stepName: 'Extract Options (A-D)', description: 'Parse stem text and extract alternative choice options A, B, C, and D.' },
-  { stepNumber: 7, stepName: 'Match Official Key', description: 'Correlate parsed questions with uploaded official gazette answer key.' },
-  { stepNumber: 8, stepName: 'AI Answer & Explanation', description: 'Generate AI-suggested answers and distractor explanations where official keys are absent.' },
-  { stepNumber: 9, stepName: 'Detect Duplicates & Errors', description: 'Flag potential duplicate questions and detect missing options or formatting flaws.' },
-  { stepNumber: 10, stepName: 'Admin Verification Queue', description: 'Dispatch extracted question items to admin human-in-the-loop verification desk.' },
-  { stepNumber: 11, stepName: 'Publish to Question Bank', description: 'Inject verified and approved questions into live student practice engine.' },
+  { stepNumber: 1, stepName: 'Upload & Validate PDF', description: 'Validate document header, page structure, and verify file integrity.' },
+  { stepNumber: 2, stepName: 'Extract Bilingual Text & OCR', description: 'Extract Malayalam & English text with neural character recognition.' },
+  { stepNumber: 3, stepName: 'Parse Questions & Match Key', description: 'Segment question stems, options (A-D), and correlate with official answer key.' },
+  { stepNumber: 4, stepName: 'Publish to Question Bank', description: 'Complete processing and add verified questions to the repository.' },
 ];
 
 export const createInitialPipelineSteps = (currentStep: number, isScanned = false): PipelineStepState[] => {
@@ -20,19 +13,11 @@ export const createInitialPipelineSteps = (currentStep: number, isScanned = fals
     let detailMessage = '';
 
     if (stepDef.stepNumber < currentStep) {
-      if (stepDef.stepNumber === 3 && isScanned) {
-        status = 'skipped';
-        detailMessage = 'Skipped (Document detected as scanned bitmap images)';
-      } else if (stepDef.stepNumber === 4 && !isScanned) {
-        status = 'skipped';
-        detailMessage = 'Skipped (Direct selectable text stream parsed without OCR)';
-      } else {
-        status = 'completed';
-        detailMessage = 'Successfully completed';
-      }
+      status = 'completed';
+      detailMessage = 'Successfully completed';
     } else if (stepDef.stepNumber === currentStep) {
       status = 'in_progress';
-      detailMessage = 'Currently executing in background batch...';
+      detailMessage = 'Processing in background...';
     }
 
     return {
