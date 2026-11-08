@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.role == 'ADMIN';
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Public catalogues: Readable by everyone, writable only by verified admins
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /exams/{examId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Question Papers: Verified papers readable by all; unverified queue readable/writable only by admin
+    match /papers/{paperId} {
+      allow read: if resource.data.is_verified == true || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // Question Bank: Verified items readable by all; editing restricted to admin reviewers
+    match /questions/{questionId} {
+      allow read: if resource.data.is_verified == true || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // Student attempts: Private to the authenticated aspirant & admins
+    match /attempts/{attemptId} {
+      allow read, write: if isAuthenticated() && (request.auth.uid == resource.data.user_id || request.auth.uid == request.resource.data.user_id || isAdmin());
+    }
+
+    // Bookmarks and Favorites: Strictly owned by the candidate
+    match /bookmarks/{bookmarkId} {
+      allow read, write: if isAuthenticated() && (request.auth.uid == resource.data.user_id || request.auth.uid == request.resource.data.user_id);
+    }
+
+    match /favorites/{favoriteId} {
+      allow read, write: if isAuthenticated() && (request.auth.uid == resource.data.user_id || request.auth.uid == request.resource.data.user_id);
+    }
+
+    // Approved Crawler Sources and Auditing Logs: Admin only
+    match /sources/{sourceId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /audit_reports/{reportId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
